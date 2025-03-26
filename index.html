@@ -78,12 +78,12 @@
     <h1 id="title">Shiny Hunt</h1>
     <label for="language-select">Language: </label>
     <select id="language-select">
-        <option value="en">English</option>
+        <option value="en" selected>English</option>
         <option value="fr">Français</option>
     </select>
     <br><br>
-    <label for="probability" id="probability-label">Probability (e.g., 1/8092): </label>
-    <input type="text" id="probability" value="1/8092">
+    <label for="probability" id="probability-label">Probability (e.g., 1/8192): </label>
+    <input type="text" id="probability" value="1/8192">
     <br><br>
     <label for="pokemon-input" id="pokemon-label">Search for a Pokémon: </label>
     <input type="text" id="pokemon-input" placeholder="Type Pokémon name">
@@ -91,8 +91,8 @@
     <br><br>
     <button onclick="refreshPokemon()" id="refresh-button">Refresh</button>
     <div id="auto-refresh-container">
-        <label for="auto-refresh-interval">Auto Refresh (seconds): </label>
-        <input type="number" id="auto-refresh-interval" min="0" max="5" value="0">
+        <label for="auto-refresh-rate">Auto Refresh (times per second): </label>
+        <input type="number" id="auto-refresh-rate" min="1" max="20" value="1">
         <button onclick="toggleAutoRefresh()" id="auto-refresh-button">Start Auto Refresh</button>
     </div>
     <br>
@@ -123,7 +123,7 @@
         let currentLanguage = 'en';
         let pokemonNamesMapping = {};
         let refreshCount = 0;
-        let probability = 1 / 8092;
+        let probability = 1 / 8192;
         let shinyList = [];
         let autoRefreshIntervalId = null;
         let isAutoRefreshActive = false;
@@ -131,13 +131,13 @@
         const translations = {
             en: {
                 title: "Shiny Hunt",
-                probabilityLabel: "Probability (e.g., 1/8092):",
+                probabilityLabel: "Probability (e.g., 1/8192):",
                 pokemonLabel: "Search for a Pokémon:",
                 refreshButton: "Refresh"
             },
             fr: {
                 title: "Shiny Hunt",
-                probabilityLabel: "Probabilité (ex. : 1/8092) :",
+                probabilityLabel: "Probabilité (ex. : 1/8192) :",
                 pokemonLabel: "Rechercher un Pokémon :",
                 refreshButton: "Rafraîchir"
             }
@@ -232,9 +232,7 @@
 
             const imageElement = document.getElementById('pokemon-image');
             const shinyLogoElement = document.getElementById('shiny-logo');
-            const refreshButton = document.getElementById('refresh-button');
             const shinySound = document.getElementById('shiny-sound');
-            const disableRefreshOption = document.getElementById('disable-refresh-option').checked;
 
             refreshCount++;
             document.getElementById('refresh-count').textContent = refreshCount;
@@ -263,11 +261,11 @@
                 document.getElementById('refresh-count').textContent = refreshCount;
                 document.getElementById('chance-percentage').textContent = '0%';
 
-                if (disableRefreshOption) {
-                    refreshButton.disabled = true; // Disable refresh button
-                    setTimeout(() => {
-                        refreshButton.disabled = false; // Enable refresh button after 2 seconds
-                    }, 2000);
+                // Stop auto-refresh if active
+                if (isAutoRefreshActive) {
+                    clearInterval(autoRefreshIntervalId);
+                    isAutoRefreshActive = false;
+                    document.getElementById('auto-refresh-button').textContent = 'Start Auto Refresh';
                 }
             } else {
                 imageElement.src = `pokemon/${pokemon}.jpg`; // Path to normal image
@@ -288,7 +286,7 @@
         }
 
         function toggleAutoRefresh() {
-            const interval = parseInt(document.getElementById('auto-refresh-interval').value);
+            const rate = parseInt(document.getElementById('auto-refresh-rate').value);
             const autoRefreshButton = document.getElementById('auto-refresh-button');
 
             if (isAutoRefreshActive) {
@@ -296,16 +294,27 @@
                 autoRefreshIntervalId = null;
                 autoRefreshButton.textContent = 'Start Auto Refresh';
             } else {
-                if (interval > 0) {
-                    autoRefreshIntervalId = setInterval(refreshPokemon, interval * 1000);
+                if (rate > 0) {
+                    autoRefreshIntervalId = setInterval(refreshPokemon, 1000 / rate);
                     autoRefreshButton.textContent = 'Stop Auto Refresh';
                 }
             }
             isAutoRefreshActive = !isAutoRefreshActive;
         }
 
-        loadPokemonList(currentLanguage);
-        loadPokemonNamesMapping();
+        document.addEventListener('DOMContentLoaded', function() {
+            // Reset all options on page load
+            document.getElementById('auto-refresh-rate').value = 1;
+            document.getElementById('language-select').value = 'en';
+            document.getElementById('probability').value = '1/8192';
+            document.getElementById('disable-refresh-option').checked = false;
+            document.getElementById('pokemon-input').value = '';
+
+            // Call existing functions to load data
+            changeLanguage(document.getElementById('language-select').value);
+            loadPokemonList(currentLanguage);
+            loadPokemonNamesMapping();
+        });
     </script>
 </body>
 </html>
