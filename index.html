@@ -59,7 +59,7 @@
             top: 80px;
             left: 20px;
             text-align: left;
-            max-height: 100px;
+            max-height: 200px; /* Augmentez cette valeur pour une liste plus longue */
             overflow-y: auto;
             border: 1px solid #ccc;
             padding: 5px;
@@ -67,10 +67,35 @@
             font-size: 0.9em;
         }
         .shiny-item {
+            display: flex;
+            align-items: center;
             margin-bottom: 2px;
+        }
+        .shiny-item img {
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
         }
         #auto-refresh-container {
             margin-top: 10px;
+        }
+        #reset-button {
+            margin-top: 10px;
+        }
+        #shiny-thumbnails {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            width: 150px;
+            border: 1px solid #ccc;
+            padding: 5px;
+            max-height: 200px; /* Ajustez cette valeur selon vos besoins */
+            overflow-y: auto;
+        }
+        .shiny-thumbnail {
+            width: 40px;
+            height: 40px;
+            margin-bottom: 5px;
         }
     </style>
 </head>
@@ -115,6 +140,11 @@
     <div id="shiny-list">
         <h4>Shiny List</h4>
         <div id="shiny-list-container"></div>
+        <button id="reset-button" onclick="resetShinyList()">Reset Shiny List</button>
+    </div>
+    <div id="shiny-thumbnails">
+        <h4>Shiny Thumbnails</h4>
+        <div id="shiny-thumbnails-container"></div>
     </div>
     <audio id="shiny-sound" src="shiny_sound.mp3"></audio>
 
@@ -223,9 +253,9 @@
             let pokemon = document.getElementById('pokemon-input').value.toLowerCase();
 
             // Convert Pokémon name to English for image paths if the current language is French
-            if (currentLanguage === 'fr' && pokemonNamesMapping[pokemon]) {
-                pokemon = pokemonNamesMapping[pokemon];
-            }
+            const englishPokemonName = currentLanguage === 'fr' && pokemonNamesMapping[pokemon]
+                ? pokemonNamesMapping[pokemon]
+                : pokemon;
 
             const randomNumber = Math.random();
             const shinyThreshold = numerator / denominator;
@@ -240,18 +270,22 @@
             document.getElementById('chance-percentage').textContent = chancePercentage.toFixed(6) + '%';
 
             if (randomNumber <= shinyThreshold) {
-                imageElement.src = `pokemonshiny/${pokemon}.jpg`; // Path to shiny image
+                imageElement.src = `pokemonshiny/${englishPokemonName}.jpg`; // Path to shiny image
                 shinyLogoElement.style.display = 'block'; // Show shiny logo
                 shinySound.volume = document.getElementById('volume-control').value;
                 shinySound.play(); // Play shiny sound
 
                 // Add shiny to the list
                 shinyList.push({
-                    name: currentLanguage === 'fr' ? Object.keys(pokemonNamesMapping).find(key => pokemonNamesMapping[key] === pokemon) || pokemon : pokemon,
+                    name: pokemon, // Use the name in the current language
+                    englishName: englishPokemonName, // Store the English name for image paths
                     probability: `${numerator}/${denominator}`,
                     chance: chancePercentage.toFixed(6) + '%',
                     tries: refreshCount
                 });
+
+                // Save shiny list to localStorage
+                localStorage.setItem('shinyList', JSON.stringify(shinyList));
 
                 // Update shiny list display
                 updateShinyList();
@@ -268,20 +302,45 @@
                     document.getElementById('auto-refresh-button').textContent = 'Start Auto Refresh';
                 }
             } else {
-                imageElement.src = `pokemon/${pokemon}.jpg`; // Path to normal image
+                imageElement.src = `pokemon/${englishPokemonName}.jpg`; // Path to normal image
                 shinyLogoElement.style.display = 'none'; // Hide shiny logo
             }
         }
 
         function updateShinyList() {
             const shinyListContainer = document.getElementById('shiny-list-container');
+            const shinyThumbnailsContainer = document.getElementById('shiny-thumbnails-container');
             shinyListContainer.innerHTML = '';
+            shinyThumbnailsContainer.innerHTML = '';
 
             shinyList.forEach((shiny, index) => {
                 const shinyItem = document.createElement('div');
                 shinyItem.classList.add('shiny-item');
-                shinyItem.textContent = `#${index + 1} - ${shiny.name} | Probability: ${shiny.probability} | Chance: ${shiny.chance} | Tries: ${shiny.tries}`;
+
+                // Create logo image
+                const logoImage = document.createElement('img');
+                logoImage.src = 'shiny_logo.png'; // Path to the shiny logo image
+                logoImage.alt = 'Shiny Logo';
+
+                // Create text content
+                const textContent = document.createElement('span');
+                textContent.textContent = `#${index + 1} - ${shiny.name} | Probability: ${shiny.probability} | Chance: ${shiny.chance} | Tries: ${shiny.tries}`;
+
+                // Append logo and text to the shiny item
+                shinyItem.appendChild(logoImage);
+                shinyItem.appendChild(textContent);
+
+                // Append shiny item to the list container
                 shinyListContainer.appendChild(shinyItem);
+
+                // Create thumbnail image
+                const thumbnailImage = document.createElement('img');
+                thumbnailImage.classList.add('shiny-thumbnail');
+                thumbnailImage.src = `pokemonshiny/${shiny.englishName}.jpg`; // Path to the shiny Pokémon image
+                thumbnailImage.alt = `${shiny.name} Shiny`;
+
+                // Append thumbnail image to the thumbnails container
+                shinyThumbnailsContainer.appendChild(thumbnailImage);
             });
         }
 
@@ -302,6 +361,12 @@
             isAutoRefreshActive = !isAutoRefreshActive;
         }
 
+        function resetShinyList() {
+            shinyList = [];
+            localStorage.removeItem('shinyList');
+            updateShinyList();
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             // Reset all options on page load
             document.getElementById('auto-refresh-rate').value = 1;
@@ -309,6 +374,13 @@
             document.getElementById('probability').value = '1/8192';
             document.getElementById('disable-refresh-option').checked = false;
             document.getElementById('pokemon-input').value = '';
+
+            // Load shiny list from localStorage
+            const savedShinyList = localStorage.getItem('shinyList');
+            if (savedShinyList) {
+                shinyList = JSON.parse(savedShinyList);
+                updateShinyList();
+            }
 
             // Call existing functions to load data
             changeLanguage(document.getElementById('language-select').value);
